@@ -1,0 +1,118 @@
+#include "Reset.h"
+
+void Reset_Init(void) {
+
+    // 引脚配置
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+
+    // 配置外部中断
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource0);
+
+    EXTI_InitTypeDef EXTI_InitStructure;
+    EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling; // 下降沿触发
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);
+
+    // 配置中断
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority =
+        1; // 调高优先级: 用户按键的行为, 比较迫切,应该优先级比较高
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+}
+
+#include "PC.h"
+int times = 0;
+void EXTI0_IRQHandler(void) {
+    if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
+
+        times++;
+        Delay_ms(20); // 按键消抖
+
+        while (times > 0) {
+            // 获取按钮状态
+            if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0) == Bit_RESET) {
+                // 按钮还在按
+                times++;
+                Delay_ms(20);
+            } else {
+                // 按钮释放
+                break;
+            }
+        }
+
+        if (times >= 200) { // 长按, 清空Flash, 复位重启
+            printf1("long \r\n");
+            flashClean();
+            NVIC_SystemReset();
+        } else { // 短按, 仅复位重启
+            NVIC_SystemReset(); // 触发系统复位
+        }
+
+        times = 0;
+        EXTI_ClearITPendingBit(EXTI_Line0);
+    }
+}
+
+
+int howStart() {
+
+
+	//RCC_GetFlagStatus 的作用
+//​功能：RCC_GetFlagStatus 函数用于检查复位和时钟控制（RCC）模块中的各种标志位状态，
+//			如复位标志（Reset Flags）、时钟就绪标志（Clock Ready Flags）等。
+//​相关标志：
+//RCC_FLAG_PORRST：上电复位标志
+//RCC_FLAG_PINRST：外部复位引脚（NRST）复位标志
+//RCC_FLAG_IWDGRST：独立看门狗复位标志
+//RCC_FLAG_WWDGRST：窗口看门狗复位标志
+//RCC_FLAG_SFTRST：软件复位标志
+//RCC_FLAG_LPWRRST：低功耗复位标志
+//3. 复位后能否通过 RCC_GetFlagStatus 检测到 NVIC_SystemReset()
+//3.1 软件复位标志 (RCC_FLAG_SFTRST)
+//​理论：NVIC_SystemReset() 触发的复位应设置软件复位标志 RCC_FLAG_SFTRST。
+//​实际：在大多数STM32系列中，NVIC_SystemReset() 实际上是通过触发一个系统复位请求来实现的，
+//			这通常不会设置 RCC_FLAG_SFTRST 标志。相反，它会导致整个系统复位，类似于硬件复位，
+//			因此不会保留复位原因的标志位。
+
+
+    // 检查系统启动港式
+    if (RCC_GetFlagStatus(RCC_FLAG_PORRST) != RESET) {
+				 printf1("1 \r\n"); 
+        RCC_ClearFlag();
+    } else  if (RCC_GetFlagStatus(RCC_FLAG_PINRST) != RESET) {
+      printf1("2 \r\n"); 
+        RCC_ClearFlag();
+    } else  if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) != RESET) {
+        printf1("3 \r\n"); 
+        RCC_ClearFlag();
+    } else  if (RCC_GetFlagStatus(RCC_FLAG_WWDGRST) != RESET) {
+        printf1("4 \r\n"); 
+        RCC_ClearFlag();
+    } else  if (RCC_GetFlagStatus(RCC_FLAG_SFTRST) != RESET) {
+       printf1("5 \r\n"); 
+        RCC_ClearFlag();
+    } else  if (RCC_GetFlagStatus(RCC_FLAG_LPWRRST) != RESET) {
+        printf1("6 \r\n"); 
+        RCC_ClearFlag();
+    } else {
+			printf1("7 \r\n"); 
+		}
+		return 0;
+}
+
+
+
+

@@ -1,0 +1,28 @@
+#include "Init.h"
+
+void Init(void){
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	Delay_Init();
+	PC_Init();
+	WIFI_Init();
+	BlueTooth_Init();
+	Sensor_Init();
+	OLED_Init();
+	Light_Init();
+	WarningTone_Init();
+	Reset_Init();
+	
+	queue = xQueueCreate(100,1);
+	
+	// Delay_ms(5000);// 等待, 等待各模块上电,初始化之后需要一定时间进入稳定状态
+	Delay_ms(1000);
+	
+	
+	// TODO: 
+	// 亮灯 OR 蜂鸣器响 -> 提示用户可以开始进行配置操作
+//	openLight(GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7);
+//	openWarningTone(GPIO_Pin_15);
+//	closeWarningTone(GPIO_Pin_15);
+//	closeLight(GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7);
+
+}
